@@ -1,0 +1,40 @@
+version: '3'
+services:
+  eureka-server:
+    build:
+      context: ./eureka-server  # Build context for eureka-server
+      dockerfile: Dockerfile     # Dockerfile location inside eureka-server folder
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    networks:
+      - eureka-network
+
+  config-server:
+    build:
+      context: ./config-server  # Build context for eureka-server
+      dockerfile: Dockerfile     # Dockerfile location inside eureka-server folder
+    container_name: config-server
+    ports:
+      - "8088:8088"
+    networks:
+      - eureka-network
+
+
+  auth-service:
+    build:
+      context: ./auth-service  # Build context for auth-service
+      dockerfile: Dockerfile     # Dockerfile location inside auth-service folder
+    container_name: auth-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      - eureka-server
+    networks:
+      - eureka-network
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka
+
+networks:
+  eureka-network:
+    driver: bridge
