@@ -3,14 +3,25 @@ spring:
     url: jdbc:mysql://localhost:3306/micro-auth
     username: root
     password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
+
+logging:
+  level:
+    org:
+      springframework:
+        security: DEBUG
+
 server:
   port: 8080
+  servlet:
+    context-path: /api/v1/user
+
 eureka:
   client:
     register-with-eureka: true
@@ -19,8 +30,15 @@ eureka:
       defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka}
   instance:
     hostname: auth-service
+    prefer-ip-address: true
 
 management:
   tracing:
     sampling:
       probability: 1.0
+
+application:
+  security:
+    jwt:
+      secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+      expiration: 86400000

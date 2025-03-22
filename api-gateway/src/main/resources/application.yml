@@ -1,6 +1,6 @@
 spring:
   application:
-    name: auth-service
+    name: api-gateway
   config:
     import: "optional:configserver:http://localhost:8088" # Optional meaning start application without config server
 
@@ -8,4 +8,6 @@ application:
   security:
     jwt:
       secret-key: ${application.security.jwt.secret-key}
-      expiration: ${application.security.jwt.expiration}
+
+gateway:
+  excludedUrl: ${gateway.excludedUrl}

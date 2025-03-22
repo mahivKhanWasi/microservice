@@ -20,6 +20,17 @@ services:
     networks:
       - eureka-network
 
+  
+    api-gateway:
+      build:
+        context: ./api-gateway  # Build context for eureka-server
+        dockerfile: Dockerfile     # Dockerfile location inside eureka-server folder
+      container_name: api-gateway
+      ports:
+        - "4000:4000"
+      networks:
+        - eureka-network
+
 
   auth-service:
     build:
