@@ -39,7 +39,7 @@ server:
   port: 4000
 
 gateway:
-  excludedUrl: /api/v1/user, /login
+  excludedUrl: /api/v1/user, /login, /register
 application:
   security:
     jwt:
