@@ -10,11 +10,17 @@ spring:
           uri: lb://auth-service
           predicates:
             - Path=/api/v1/user/**
+        - id: portfolio-service
+          uri: lb://portfolio-service
+          predicates:
+            - Path=/api/v1/portfolio/**
+          filters:
+            - AuthenticationPreFilter
       globalcors:
         cors-configurations:
           '[/**]':
             allowedOrigins:
-              - "http://localhost:8080"
+              - "http://localhost:3000" #Accept request from the frontend at port 3000
             allowedMethods:
               - GET
               - POST
@@ -39,7 +45,7 @@ server:
   port: 4000
 
 gateway:
-  excludedUrl: /api/v1/user, /login, /register
+  excludedUrl: /api/v1/user/login, /api/v1/user/register
 application:
   security:
     jwt:

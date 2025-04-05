@@ -29,6 +29,7 @@ public class UserServiceImpl implements UserService{
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final RedisService redisService;
 
 
     public String register(RequestUserDTO dto){
@@ -85,7 +86,7 @@ public class UserServiceImpl implements UserService{
             claims.put("fullName", user1.getFullName());
 
             String accessToken = jwtService.generateToken(claims, user1);
-
+            redisService.saveToken(user1.getFullName(), accessToken);
             response.put("token", accessToken);
             return response;
 

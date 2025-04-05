@@ -1,50 +1,91 @@
 version: '3'
 services:
+  redis:
+    image: "redis:latest"
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - eureka-network
+    command: ["redis-server", "--appendonly", "yes"]  # Enables persistence
+
   eureka-server:
     build:
-      context: ./eureka-server  # Build context for eureka-server
-      dockerfile: Dockerfile     # Dockerfile location inside eureka-server folder
+      context: ./eureka-server  
+      dockerfile: Dockerfile   
     container_name: eureka-server
+    restart: always
     ports:
       - "8761:8761"
     networks:
       - eureka-network
+    depends_on:
+      - redis
 
   config-server:
     build:
-      context: ./config-server  # Build context for eureka-server
-      dockerfile: Dockerfile     # Dockerfile location inside eureka-server folder
+      context: ./config-server  
+      dockerfile: Dockerfile   
     container_name: config-server
+    restart: always
     ports:
       - "8088:8088"
     networks:
       - eureka-network
+    depends_on:
+      - eureka-server
 
-  
-    api-gateway:
-      build:
-        context: ./api-gateway  # Build context for eureka-server
-        dockerfile: Dockerfile     # Dockerfile location inside eureka-server folder
-      container_name: api-gateway
-      ports:
-        - "4000:4000"
-      networks:
-        - eureka-network
-
+  api-gateway:
+    build:
+      context: ./api-gateway  
+      dockerfile: Dockerfile   
+    container_name: api-gateway
+    restart: always
+    ports:
+      - "4000:4000"
+    networks:
+      - eureka-network
+    depends_on:
+      - config-server
+      - eureka-server
+      - redis
 
   auth-service:
     build:
-      context: ./auth-service  # Build context for auth-service
-      dockerfile: Dockerfile     # Dockerfile location inside auth-service folder
+      context: ./auth-service  
+      dockerfile: Dockerfile   
     container_name: auth-service
+    restart: always
     ports:
       - "8080:8080"
     depends_on:
+      - config-server
       - eureka-server
+      - redis
     networks:
       - eureka-network
     environment:
       - EUREKA_SERVER_URL=http://eureka-server:8761/eureka
+      - SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/micro-auth
+
+  portfolio-service:
+    build:
+      context: ./portfolio-service  
+      dockerfile: Dockerfile   
+    container_name: portfolio-service
+    restart: always
+    ports:
+      - "8081:8081"
+    depends_on:
+      - config-server
+      - eureka-server
+      - redis
+    networks:
+      - eureka-network
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka
+      - SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/micro-portfolio
 
 networks:
   eureka-network:

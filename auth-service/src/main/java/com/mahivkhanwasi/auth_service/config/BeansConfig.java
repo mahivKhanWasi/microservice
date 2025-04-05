@@ -1,6 +1,7 @@
-package com.mahivkhanwasi.auth_service.security;
+package com.mahivkhanwasi.auth_service.config;
 
 
+import com.mahivkhanwasi.auth_service.security.CustomUserDetailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

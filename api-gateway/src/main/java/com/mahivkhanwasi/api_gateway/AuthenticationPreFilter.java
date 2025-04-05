@@ -2,12 +2,15 @@ package com.mahivkhanwasi.api_gateway;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mahivkhanwasi.api_gateway.service.JwtService;
+import com.mahivkhanwasi.api_gateway.service.RedisService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -27,52 +30,57 @@ import java.util.function.Predicate;
 @Component
 public class AuthenticationPreFilter extends AbstractGatewayFilterFactory<AuthenticationPreFilter.Config> {
 
-
     @Autowired
     private ObjectMapper objectMapper;
+
     @Autowired
     private JwtService jwtService;
+
     @Autowired
     private List<String> excludedUrls;
 
+    @Autowired
+    private RedisService redisService; // Redis connection
 
     public AuthenticationPreFilter() {
         super(Config.class);
     }
-    public static class Config{
+
+    public static class Config {
         private List<String> excludedPatterns;
 
         public List<String> getExcludedPatterns() {
             return excludedPatterns;
         }
 
-
-
         public void setExcludedPatterns(List<String> excludedPatterns) {
             this.excludedPatterns = excludedPatterns;
         }
     }
 
-
     @Override
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
-            ServerHttpRequest request = (ServerHttpRequest) exchange.getRequest();
-            String path = request.getURI().getPath();
-            HttpHeaders httpHeaders = request.getHeaders();
-            String token = httpHeaders.getFirst(HttpHeaders.AUTHORIZATION);
-            if (isExcluded(path)){
+            String path = exchange.getRequest().getURI().getPath();
+//            System.out.println("Request received at API Gateway for path: " + path); // Debugging log
+
+            if (isExcluded(path)) {
+//                System.out.println("Skipping authentication for: " + path);
                 return chain.filter(exchange);
             }
 
-            if (token == null || !token.startsWith("Bearer ")){
+            HttpHeaders httpHeaders = exchange.getRequest().getHeaders();
+            String token = httpHeaders.getFirst(HttpHeaders.AUTHORIZATION);
+
+            if (token == null || !token.startsWith("Bearer ")) {
+//                System.out.println("Missing or invalid Authorization header for path: " + path);
                 return handleAuthError(exchange, "Missing Authorization Header", HttpStatus.UNAUTHORIZED);
             }
+
             token = token.substring(7);
 
             try {
                 var key = jwtService.getSignInKey();
-
                 Claims claims = Jwts.parserBuilder()
                         .setSigningKey(key)
                         .build()
@@ -80,27 +88,40 @@ public class AuthenticationPreFilter extends AbstractGatewayFilterFactory<Authen
                         .getBody();
 
                 String username = claims.getSubject();
-                String role = claims.get("authorities").toString();
+                String fullname = (String) claims.get("fullName");
+//                System.out.println("Extracted username from token: " + username);
+
+                // Check if the username exists in Redis
+                if (!redisService.isUserInRedis(fullname)) {
+                    return handleAuthError(exchange, "Unauthorized user", HttpStatus.UNAUTHORIZED);
+                }
+
+                // Retrieve stored token from Redis
+                String storedToken = redisService.getToken(fullname);
+
+                if (storedToken == null || !storedToken.equals(token)) {
+                    return handleAuthError(exchange, "Invalid or expired token", HttpStatus.UNAUTHORIZED);
+                }
 
                 exchange.getRequest().mutate()
                         .header("username", username)
-                        .header("authorities", role)
                         .build();
-                return chain.filter(exchange);
 
+                return chain.filter(exchange);
             } catch (Exception e) {
+                System.out.println("Token validation failed: " + e.getMessage());
                 return handleAuthError(exchange, "Invalid Token", HttpStatus.UNAUTHORIZED);
             }
         };
     }
 
-    private boolean isExcluded(String path){
+    private boolean isExcluded(String path) {
         Predicate<String> isExcluded = pattern -> path.matches(pattern.replace("**", ".*"));
         return excludedUrls.stream().anyMatch(isExcluded);
     }
 
-    private Mono<Void> handleAuthError(ServerWebExchange exchange, String message, HttpStatus status){
-        ServerHttpResponse response =  exchange.getResponse();
+    private Mono<Void> handleAuthError(ServerWebExchange exchange, String message, HttpStatus status) {
+        ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(status);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
@@ -110,11 +131,9 @@ public class AuthenticationPreFilter extends AbstractGatewayFilterFactory<Authen
         responseBody.put("status", status.value());
         responseBody.put("errorCode", status.value());
 
-        try{
-            byte [] bytes = objectMapper.writeValueAsBytes(responseBody);
-            DataBuffer buffer = response.bufferFactory().wrap(bytes);
-            return response.writeWith(Mono.just(buffer));
-
+        try {
+            byte[] bytes = objectMapper.writeValueAsBytes(responseBody);
+            return response.writeWith(Mono.just(response.bufferFactory().wrap(bytes)));
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
