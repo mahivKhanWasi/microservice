@@ -63,10 +63,8 @@ public class AuthenticationPreFilter extends AbstractGatewayFilterFactory<Authen
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
             String path = exchange.getRequest().getURI().getPath();
-//            System.out.println("Request received at API Gateway for path: " + path); // Debugging log
 
             if (isExcluded(path)) {
-//                System.out.println("Skipping authentication for: " + path);
                 return chain.filter(exchange);
             }
 
@@ -74,7 +72,6 @@ public class AuthenticationPreFilter extends AbstractGatewayFilterFactory<Authen
             String token = httpHeaders.getFirst(HttpHeaders.AUTHORIZATION);
 
             if (token == null || !token.startsWith("Bearer ")) {
-//                System.out.println("Missing or invalid Authorization header for path: " + path);
                 return handleAuthError(exchange, "Missing Authorization Header", HttpStatus.UNAUTHORIZED);
             }
 
@@ -90,9 +87,9 @@ public class AuthenticationPreFilter extends AbstractGatewayFilterFactory<Authen
 
                 String username = claims.getSubject();
                 String fullname = (String) claims.get("fullName");
-//                System.out.println("Extracted username from token: " + username);
+                List<String> roles = (List<String>) claims.get("authorities"); // Extract roles
 
-                // Check if the username exists in Redis
+                // Check if the user exists in Redis
                 if (!redisService.isUserInRedis(fullname)) {
                     return handleAuthError(exchange, "Unauthorized user", HttpStatus.UNAUTHORIZED);
                 }
@@ -100,15 +97,14 @@ public class AuthenticationPreFilter extends AbstractGatewayFilterFactory<Authen
                 // Retrieve stored token from Redis
                 RedisUserSession storedSession = redisService.getUserSession(fullname);
 
-                if (    storedSession == null ||
-                        storedSession.getToken() == null ||
-                        !storedSession.getToken().equals(token) ) {
-
+                if (storedSession == null || storedSession.getToken() == null || !storedSession.getToken().equals(token)) {
                     return handleAuthError(exchange, "Invalid or expired token", HttpStatus.UNAUTHORIZED);
                 }
 
+                // Add username and roles to headers
                 exchange.getRequest().mutate()
                         .header("username", username)
+                        .header("X-User-Roles", String.join(",", roles)) // Send roles as a comma-separated string
                         .build();
 
                 return chain.filter(exchange);
@@ -118,6 +114,7 @@ public class AuthenticationPreFilter extends AbstractGatewayFilterFactory<Authen
             }
         };
     }
+
 
     private boolean isExcluded(String path) {
         Predicate<String> isExcluded = pattern -> path.matches(pattern.replace("**", ".*"));
