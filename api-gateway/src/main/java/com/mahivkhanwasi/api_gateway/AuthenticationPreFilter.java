@@ -2,6 +2,7 @@ package com.mahivkhanwasi.api_gateway;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mahivkhanwasi.api_gateway.dto.RedisUserSession;
 import com.mahivkhanwasi.api_gateway.service.JwtService;
 import com.mahivkhanwasi.api_gateway.service.RedisService;
 import io.jsonwebtoken.Claims;
@@ -97,9 +98,12 @@ public class AuthenticationPreFilter extends AbstractGatewayFilterFactory<Authen
                 }
 
                 // Retrieve stored token from Redis
-                String storedToken = redisService.getToken(fullname);
+                RedisUserSession storedSession = redisService.getUserSession(fullname);
 
-                if (storedToken == null || !storedToken.equals(token)) {
+                if (    storedSession == null ||
+                        storedSession.getToken() == null ||
+                        !storedSession.getToken().equals(token) ) {
+
                     return handleAuthError(exchange, "Invalid or expired token", HttpStatus.UNAUTHORIZED);
                 }
 

@@ -1,5 +1,6 @@
 package com.mahivkhanwasi.auth_service.service;
 
+import com.mahivkhanwasi.auth_service.dto.RedisUserSession;
 import com.mahivkhanwasi.auth_service.dto.RequestLoginDTO;
 import com.mahivkhanwasi.auth_service.dto.RequestUserDTO;
 import com.mahivkhanwasi.auth_service.model.Role;
@@ -86,7 +87,14 @@ public class UserServiceImpl implements UserService{
             claims.put("fullName", user1.getFullName());
 
             String accessToken = jwtService.generateToken(claims, user1);
-            redisService.saveToken(user1.getFullName(), accessToken);
+
+            RedisUserSession userSession = new RedisUserSession(
+                    user1.getFullName(),
+                    user1.getUsername(),
+                    accessToken
+            );
+            redisService.saveUserSession(user1.getFullName(), userSession);
+
             response.put("token", accessToken);
             return response;
 
