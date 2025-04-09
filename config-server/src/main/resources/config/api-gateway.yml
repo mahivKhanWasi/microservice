@@ -15,12 +15,14 @@ spring:
           predicates:
             - Path=/api/v1/portfolio/**
           filters:
-            - AuthenticationPreFilter
+            - AuthenticationPreFilter  # Ensure this filter is correctly configured
+      default-filters:
+        - PreserveHostHeader
       globalcors:
         cors-configurations:
           '[/**]':
             allowedOrigins:
-              - "http://localhost:3000" #Accept request from the frontend at port 3000
+              - "http://localhost:3000"  # Accept request from the frontend at port 3000
             allowedMethods:
               - GET
               - POST
@@ -31,6 +33,8 @@ spring:
               - Content-Type
               - responseType
               - Authorization
+              - X-User-Roles  # ✅ Explicitly allow custom headers
+              - username
             allowCredentials: true
 
 eureka:
@@ -41,11 +45,13 @@ eureka:
       defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka}
   instance:
     hostname: api-gateway
+
 server:
   port: 4000
 
 gateway:
   excludedUrl: /api/v1/user/login, /api/v1/user/register
+
 application:
   security:
     jwt:

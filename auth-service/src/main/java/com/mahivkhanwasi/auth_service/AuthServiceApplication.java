@@ -27,6 +27,14 @@ public class AuthServiceApplication {
 	@Bean
 	public CommandLineRunner runner(RoleRepository roleRepository, UserRepository userRepository, PasswordEncoder passwordEncoder){
 		return args -> {
+
+			if(roleRepository.findByName("ADMIN").isEmpty()){
+
+				Role role = Role.builder().name("ADMIN").build();
+				roleRepository.save(
+						role
+				);
+			}
 			if(roleRepository.findByName("USER").isEmpty()){
 
 				Role role = Role.builder().name("USER").build();
@@ -35,7 +43,7 @@ public class AuthServiceApplication {
 				);
 			}
 
-			var userRole = roleRepository.findByName("USER")
+			var adminRole = roleRepository.findByName("ADMIN")
 					.orElseThrow(() -> new IllegalStateException("ROLE User not initialized"));
 
 			User check = userRepository.findByUsername("admin@gmail.com").orElse(null);
@@ -48,7 +56,7 @@ public class AuthServiceApplication {
 				user.setLastName("Admin");
 				user.setAccountLocked(true);
 				user.setEnabled(true);
-				user.setRoles(List.of(userRole));
+				user.setRoles(List.of(adminRole));
 
 				userRepository.save(user);
 			}

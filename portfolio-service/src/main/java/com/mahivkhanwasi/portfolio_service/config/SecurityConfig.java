@@ -43,16 +43,21 @@ public class SecurityConfig {
                                         FilterChain filterChain) throws ServletException, IOException {
 
             String rolesHeader = request.getHeader("X-User-Roles");
+            String username = request.getHeader("username");
 
-            if (rolesHeader != null) {
+            System.out.println("📥 Incoming Request Headers:");
+            System.out.println("username: " + username);
+            System.out.println("X-User-Roles: " + rolesHeader);
+
+            if (rolesHeader != null && username != null) {
                 List<GrantedAuthority> authorities = Arrays.stream(rolesHeader.split(","))
                         .map(String::trim)
                         .map(SimpleGrantedAuthority::new)
                         .collect(Collectors.toList());
+                System.out.println("Authorities set in Security Context: " + authorities);
 
-                // ✅ Set Authentication context
                 UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(null, null, authorities);
+                        new UsernamePasswordAuthenticationToken(username, null, authorities);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
 

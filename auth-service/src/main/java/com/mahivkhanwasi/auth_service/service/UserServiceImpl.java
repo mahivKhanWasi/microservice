@@ -93,7 +93,7 @@ public class UserServiceImpl implements UserService{
                     user1.getUsername(),
                     accessToken
             );
-            redisService.saveUserSession(user1.getFullName(), userSession);
+            redisService.set(user1.getFullName(), userSession, 7200L);
 
             response.put("token", accessToken);
             return response;
